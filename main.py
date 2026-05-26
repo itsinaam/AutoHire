@@ -11,7 +11,18 @@ from models import Base, Jobs
 # from scraper import LIMIT, LOCATION_ID, OUTPUT_FILE, PARALLEL_WORKERS, SEARCH_KEYWORD, run_scraper_sync
 
 
+
+from fastapi.middleware.cors import CORSMiddleware
+
 app = FastAPI(title="LinkedIn Profile Scraper API")
+
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["*"],  # allow all origins (FE ports/domains)
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
 
 
 # class ScrapeRequest(BaseModel):
