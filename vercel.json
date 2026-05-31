@@ -1,19 +1,16 @@
 {
   "$schema": "https://openapi.vercel.sh/vercel.json",
   "installCommand": "PLAYWRIGHT_BROWSERS_PATH=0 python -m pip install -r requirements.txt ; PLAYWRIGHT_BROWSERS_PATH=0 python -m playwright install chromium",
-  "builds": [
-    {
-      "src": "main.py",
-      "use": "@vercel/python",
-      "config": {
-        "maxLambdaSize": "250M"
-      }
+  "functions": {
+    "main.py": {
+      "maxDuration": 60,
+      "includeFiles": "{linkedin_session.json,linkedin_profiles.json,system_prompt.txt,playwright/**,**/playwright/driver/package/.local-browsers/**}"
     }
-  ],
-  "routes": [
+  },
+  "rewrites": [
     {
-      "src": "/(.*)",
-      "dest": "main.py"
+      "source": "/(.*)",
+      "destination": "/main.py"
     }
   ]
 }
