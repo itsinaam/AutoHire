@@ -2,7 +2,7 @@
   "$schema": "https://openapi.vercel.sh/vercel.json",
   "installCommand": "PLAYWRIGHT_BROWSERS_PATH=0 python -m pip install -r requirements.txt ; PLAYWRIGHT_BROWSERS_PATH=0 python -m playwright install chromium",
   "functions": {
-    "api/index.py": {
+    "api/**/*.py": {
       "maxDuration": 60,
       "includeFiles": "{main.py,scraper.py,database.py,models.py,requirements.txt,linkedin_session.json,linkedin_profiles.json,system_prompt.txt,playwright/**,**/playwright/driver/package/.local-browsers/**}"
     }
