@@ -1,1 +1,58 @@
-[]
+[
+    {
+        "profile_url": "https://www.linkedin.com/in/sana-ahmad-130a34210",
+        "name": "Sana Ahmad",
+        "headline": "Umar Farooq recent entity history\nUmar Farooq",
+        "location": "Islāmābād, Pakistan",
+        "about": "I am a Frontend Developer and Software Engineer with a passion for building responsive, scalable, and modern web applications. Currently at SafeCare Technology, I specialize in the React/Next.js ecosystem, Tailwind CSS, and JavaScript, focusing heavily on clean code, component reusability, and performance optimization.\n\nMy work includes developing diverse platforms, from e-commerce and healthcare systems to utility applications, and using low-code tools like Framer and Webflow for rapid prototyping. \n\nAlongside my technical skills, I bring strong leadership, teamwork, and problem-solving abilities, ensuring user-centered digital solutions that combine functionality, performance, and design.\n… more",
+        "experience": [
+            {
+                "title": "Safecare Technology",
+                "company": "1 yr",
+                "duration": "On-site",
+                "location": "Frontend Developer"
+            },
+            {
+                "title": "Web Development Internship",
+                "company": "Eziline Software House Pvt Ltd · Internship",
+                "duration": "Jul 2023 - Sep 2023 · 3 mos",
+                "location": "Rawalpindi, Punjab, Pakistan · On-site"
+            }
+        ]
+    },
+    {
+        "profile_url": "https://www.linkedin.com/in/faaiz-amjad",
+        "name": "Faaiz Amjad",
+        "headline": "Umar Farooq recent entity history\nUmar Farooq",
+        "location": "Burewala, Punjab, Pakistan",
+        "about": "With an established career in both web development and content writing, I bring a unique blend of technical proficiency and creative communication. My recent projects have focused on leveraging HTML, CSS, JavaScript, jQuery, and Bootstrap to build responsive websites that not only look great but also perform exceptionally on search engines, thanks to my SEO and WordPress expertise.\n\nIn the digital realm, my goal is to deliver seamless and engaging user experiences. Alongside my technical skills, my aptitude for WordPress business website development is a testament to my commitment to adaptability and innovation. The combination of development know-how and content strategy has empowered our team to significantly enhance online presence and user engagement.\n… more",
+        "experience": [
+            {
+                "title": "Frontend Developer",
+                "company": "individual · Full-time",
+                "duration": "Feb 2024 - Present · 2 yrs 4 mos",
+                "location": "Burewala, Punjab, Pakistan · Remote"
+            },
+            {
+                "title": "Web Content Writer",
+                "company": "Fiverr · Freelance",
+                "duration": "Sep 2020 - Present · 5 yrs 9 mos",
+                "location": "Lahore, Punjab, Pakistan"
+            },
+            {
+                "title": "Student",
+                "company": "No. 2 Information technology Co., ltd. · Freelance",
+                "duration": "Sep 2001 - Present · 24 yrs 9 mos",
+                "location": "Punjab, Pakistan"
+            }
+        ]
+    },
+    {
+        "profile_url": "https://www.linkedin.com/in/ACoAAEjMSV0B7J4GSdIT1RCQkVRLU07d_ZnCa0M",
+        "name": "Faaiz Amjad",
+        "headline": "Umar Farooq recent entity history\nUmar Farooq",
+        "location": "Burewala, Punjab, Pakistan",
+        "about": "With an established career in both web development and content writing, I bring a unique blend of technical proficiency and creative communication. My recent projects have focused on leveraging HTML, CSS, JavaScript, jQuery, and Bootstrap to build responsive websites that not only look great but also perform exceptionally on search engines, thanks to my SEO and WordPress expertise.\n\nIn the digital realm, my goal is to deliver seamless and engaging user experiences. Alongside my technical skills, my aptitude for WordPress business website development is a testament to my commitment to adaptability and innovation. The combination of development know-how and content strategy has empowered our team to significantly enhance online presence and user engagement.\n… more",
+        "experience": []
+    }
+]

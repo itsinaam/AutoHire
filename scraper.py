@@ -1,39 +1,28 @@
-# pip install playwright
-# playwright install
-
 import json
 import os
 import asyncio
 import urllib.parse
-
+from dotenv import load_dotenv
 from playwright.async_api import async_playwright, TimeoutError as PlaywrightTimeoutError
-
-
 if os.name == "nt" and hasattr(asyncio, "WindowsProactorEventLoopPolicy"):
     asyncio.set_event_loop_policy(asyncio.WindowsProactorEventLoopPolicy())
 
 
-# =========================
+load_dotenv()
+
+
 # CONFIG
-# =========================
 
-LINKEDIN_EMAIL = "itsinaam899@gmail.com"
-LINKEDIN_PASSWORD = "F*xYj94C,GJeab9"
-
-SEARCH_KEYWORD = "python developer"
-LOCATION_ID = "101022442"
-LIMIT = 5
+LINKEDIN_EMAIL = os.getenv("LINKEDIN_EMAIL")
+LINKEDIN_PASSWORD = os.getenv("LINKEDIN_PASSWORD")
 
 SESSION_FILE = "linkedin_session.json"
 OUTPUT_FILE = "linkedin_profiles.json"
-PARALLEL_WORKERS = 5  
+PARALLEL_WORKERS = 3
 
 
 
-# =========================
 # LOGIN
-# =========================
-
 async def login(page, context):
 
     print("Opening LinkedIn Login...")
@@ -68,10 +57,7 @@ async def login(page, context):
         return False
 
 
-# =========================
 # SEARCH PROFILES
-# =========================
-
 async def search_profiles(page, search_keyword, location_id, limit):
 
     print("Opening LinkedIn Search...")
@@ -130,146 +116,7 @@ async def search_profiles(page, search_keyword, location_id, limit):
     return profile_links
 
 
-def save_profiles(profiles, output_file):
-
-    with open(output_file, "w", encoding="utf-8") as file_handle:
-        json.dump(
-            profiles,
-            file_handle,
-            indent=4,
-            ensure_ascii=False
-        )
-
-
-async def run_scraper(
-    search_keyword=SEARCH_KEYWORD,
-    location_id=LOCATION_ID,
-    limit=LIMIT,
-    output_file=OUTPUT_FILE,
-    parallel_workers=PARALLEL_WORKERS,
-    headless=False,
-):
-
-    async with async_playwright() as p:
-
-        browser = await p.chromium.launch(
-            headless=headless,
-            slow_mo=500
-        )
-
-        try:
-            if not os.path.exists(SESSION_FILE):
-
-                print("No session found, creating new context for login...")
-
-                context = await browser.new_context(
-                    viewport={"width": 1400, "height": 900}
-                )
-                page = await context.new_page()
-                page.set_default_timeout(60000)
-
-                login_successful = await login(page, context)
-
-                await page.close()
-                await context.close()
-
-                if not login_successful:
-                    raise RuntimeError(
-                        "LinkedIn login failed or verification is required."
-                    )
-
-            context = await browser.new_context(
-                storage_state=SESSION_FILE,
-                viewport={"width": 1400, "height": 900}
-            )
-            page = await context.new_page()
-            page.set_default_timeout(60000)
-
-            profile_links = await search_profiles(
-                page,
-                search_keyword,
-                location_id,
-                limit,
-            )
-
-            print("\nCollected Profiles:")
-            print(profile_links)
-
-            await page.close()
-            await context.close()
-
-            print(f"\nStarting parallel scraping with {parallel_workers} workers...")
-
-            all_profiles = []
-            semaphore = asyncio.Semaphore(parallel_workers)
-
-            async def scrape_with_semaphore(profile_url, index):
-                async with semaphore:
-                    try:
-                        profile_context = await browser.new_context(
-                            storage_state=SESSION_FILE,
-                            viewport={"width": 1400, "height": 900}
-                        )
-
-                        data = await scrape_profile(profile_context, profile_url)
-
-                        if data:
-                            all_profiles.append(data)
-                            print(f"Profile {index + 1} completed")
-                        else:
-                            print(f"Profile {index + 1} failed")
-
-                        await profile_context.close()
-                        return data
-
-                    except Exception as exc:
-                        print(f"Error scraping profile {index + 1}: {exc}")
-                        return None
-
-            tasks = [
-                scrape_with_semaphore(profile_url, index)
-                for index, profile_url in enumerate(profile_links)
-            ]
-
-            if tasks:
-                await asyncio.gather(*tasks)
-
-            save_profiles(all_profiles, output_file)
-
-            return {
-                "search_keyword": search_keyword,
-                "location_id": location_id,
-                "limit": limit,
-                "saved_to": output_file,
-                "total_profiles": len(all_profiles),
-                "profiles": all_profiles,
-            }
-        finally:
-            await browser.close()
-
-
-def run_scraper_sync(
-    search_keyword=SEARCH_KEYWORD,
-    location_id=LOCATION_ID,
-    limit=LIMIT,
-    output_file=OUTPUT_FILE,
-    parallel_workers=PARALLEL_WORKERS,
-    headless=False,
-):
-    return asyncio.run(
-        run_scraper(
-            search_keyword=search_keyword,
-            location_id=location_id,
-            limit=limit,
-            output_file=output_file,
-            parallel_workers=parallel_workers,
-            headless=headless,
-        )
-    )
-
-# =========================
 # SCRAPE PROFILE
-# =========================
 
 async def scrape_profile(context, profile_url):
 
@@ -294,7 +141,8 @@ async def scrape_profile(context, profile_url):
         name = ""
 
         try:
-            name = await page.locator("h2._73e030c5").first.inner_text()
+            # Find h2 inside the profile link (a[href*="/in/"])
+            name = await page.locator('a[href*="/in/"] h2').first.inner_text()
             name = name.strip()
             print("Name:", name)
         except:
@@ -307,10 +155,15 @@ async def scrape_profile(context, profile_url):
         headline = ""
 
         try:
-            headline = await page.locator(
-                'p.c4b61232'
-            ).first.inner_text()
-            headline = headline.strip()
+            # Skip the connection level indicator ("· 3rd") and get the actual headline
+            # Get all p tags and take the first meaningful one (usually 2nd p after profile info)
+            paragraphs = page.locator('p')
+            p_count = await paragraphs.count()
+            
+            if p_count > 1:
+                # Get second p (index 1) which is usually the job title/headline
+                headline = await paragraphs.nth(1).inner_text()
+                headline = headline.strip()
         except:
             pass
 
@@ -425,19 +278,159 @@ async def scrape_profile(context, profile_url):
         return None
 
 
-# =========================
-# MAIN
-# =========================
+def save_profiles(profiles, output_file):
 
-async def main():
-    result = await run_scraper()
-
-    print("\n" + "=" * 50)
-    print("DONE")
-    print(f"Scraped {result['total_profiles']} profiles")
-    print(f"Saved in {result['saved_to']}")
-    print("=" * 50)
+    with open(output_file, "w", encoding="utf-8") as file_handle:
+        json.dump(
+            profiles,
+            file_handle,
+            indent=4,
+            ensure_ascii=False
+        )
 
 
-if __name__ == "__main__":
-    asyncio.run(main())
+async def run_scraper(
+    search_keyword,
+    location_id,
+    limit,
+    output_file=OUTPUT_FILE,
+    parallel_workers=PARALLEL_WORKERS,
+    headless=False,
+):
+
+    async with async_playwright() as p:
+
+        browser = await p.chromium.launch(
+            headless=headless,
+            slow_mo=500
+        )
+
+        try:
+            if not os.path.exists(SESSION_FILE):
+
+                print("No session found, creating new context for login...")
+
+                context = await browser.new_context(
+                    viewport={"width": 1400, "height": 900}
+                )
+                page = await context.new_page()
+                page.set_default_timeout(60000)
+
+                login_successful = await login(page, context)
+
+                await page.close()
+                await context.close()
+
+                if not login_successful:
+                    raise RuntimeError(
+                        "LinkedIn login failed or verification is required."
+                    )
+
+            context = await browser.new_context(
+                storage_state=SESSION_FILE,
+                viewport={"width": 1400, "height": 900}
+            )
+            page = await context.new_page()
+            page.set_default_timeout(60000)
+
+            profile_links = await search_profiles(
+                page,
+                search_keyword,
+                location_id,
+                limit,
+            )
+
+            print("\nCollected Profiles:")
+            print(profile_links)
+
+            await page.close()
+            await context.close()
+
+            print(f"\nStarting parallel scraping with {parallel_workers} workers...")
+
+            all_profiles = []
+            semaphore = asyncio.Semaphore(parallel_workers)
+
+            async def scrape_with_semaphore(profile_url, index):
+                async with semaphore:
+                    profile_context = None
+                    try:
+                        profile_context = await browser.new_context(
+                            storage_state=SESSION_FILE,
+                            viewport={"width": 1400, "height": 900}
+                        )
+
+                        data = await scrape_profile(profile_context, profile_url)
+
+                        if data:
+                            all_profiles.append(data)
+                            print(f"Profile {index + 1} completed")
+                        else:
+                            print(f"Profile {index + 1} failed")
+
+                        return data
+
+                    except Exception as exc:
+                        print(f"Error scraping profile {index + 1}: {exc}")
+                        return None
+
+                    finally:
+                        if profile_context is not None:
+                            try:
+                                await profile_context.close()
+                            except Exception as exc:
+                                print(f"Error closing profile context {index + 1}: {exc}")
+
+            tasks = [
+                scrape_with_semaphore(profile_url, index)
+                for index, profile_url in enumerate(profile_links)
+            ]
+
+            if tasks:
+                await asyncio.gather(*tasks)
+
+            print(f"Saving {len(all_profiles)} scraped profiles to {output_file}")
+            save_profiles(all_profiles, output_file)
+
+            result = {
+                "search_keyword": search_keyword,
+                "location_id": location_id,
+                "limit": limit,
+                "saved_to": output_file,
+                "total_profiles": len(all_profiles),
+                "profiles": all_profiles,
+            }
+            print(f"Scraper finished. Returning {len(all_profiles)} profiles to caller")
+
+            return result
+        finally:
+            print("Closing browser...")
+            try:
+                await asyncio.wait_for(browser.close())
+                print("Browser closed")
+            except asyncio.TimeoutError:
+                pass
+            except Exception as exc:
+                print(f"Browser close failed: {exc}")
+
+
+def run_scraper_sync(
+    search_keyword,
+    location_id,
+    limit,
+    output_file=OUTPUT_FILE,
+    parallel_workers=PARALLEL_WORKERS,
+    headless=False,
+):
+    return asyncio.run(
+        run_scraper(
+            search_keyword=search_keyword,
+            location_id=location_id,
+            limit=limit,
+            output_file=output_file,
+            parallel_workers=parallel_workers,
+            headless=headless,
+        )
+    )
+
+
