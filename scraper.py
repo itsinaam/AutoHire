@@ -3,6 +3,9 @@ import os
 import asyncio
 import urllib.parse
 from dotenv import load_dotenv
+
+os.environ.setdefault("PLAYWRIGHT_BROWSERS_PATH", "0")
+
 from playwright.async_api import async_playwright, TimeoutError as PlaywrightTimeoutError
 if os.name == "nt" and hasattr(asyncio, "WindowsProactorEventLoopPolicy"):
     asyncio.set_event_loop_policy(asyncio.WindowsProactorEventLoopPolicy())

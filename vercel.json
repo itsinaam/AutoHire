@@ -1,4 +1,6 @@
 {
+  "$schema": "https://openapi.vercel.sh/vercel.json",
+  "installCommand": "PLAYWRIGHT_BROWSERS_PATH=0 python -m pip install -r requirements.txt ; PLAYWRIGHT_BROWSERS_PATH=0 python -m playwright install chromium",
   "builds": [
     {
       "src": "main.py",
