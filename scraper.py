@@ -4,7 +4,6 @@ import asyncio
 import urllib.parse
 from dotenv import load_dotenv
 
-os.environ.setdefault("PLAYWRIGHT_BROWSERS_PATH", "0")
 
 from playwright.async_api import async_playwright, TimeoutError as PlaywrightTimeoutError
 if os.name == "nt" and hasattr(asyncio, "WindowsProactorEventLoopPolicy"):
@@ -35,28 +34,82 @@ async def login(page, context):
         wait_until="domcontentloaded"
     )
 
-    await page.fill("#username", LINKEDIN_EMAIL)
-    await page.fill("#password", LINKEDIN_PASSWORD)
+    # Scroll down to ensure form is visible
+    await page.evaluate("window.scrollBy(0, 300)")
+    await page.wait_for_timeout(1000)
 
-    await page.click('button[type="submit"]')
+    # Wait for inputs to be visible and fill them
+    await page.wait_for_selector('input[autocomplete="username webauthn"]', timeout=15000)
+    await page.fill('input[autocomplete="username webauthn"]', LINKEDIN_EMAIL)
+    
+    # Scroll down more to make password field visible
+    await page.evaluate("window.scrollBy(0, 200)")
+    await page.wait_for_timeout(1000)
+    
+    # Use .last to select the second password input (login field)
+    password_input = page.locator('input[autocomplete="current-password"]').last
+    await password_input.wait_for(state="attached", timeout=15000)
+    await page.wait_for_timeout(500)
+    await password_input.fill(LINKEDIN_PASSWORD)
 
-    # wait after login
-    await page.wait_for_timeout(15000)
+    # Scroll down significantly to make the Sign in button visible
+    await page.evaluate("window.scrollBy(0, 500)")
+    await page.wait_for_timeout(2000)
+
+    # Wait for the button to be visible and clickable
+    sign_in_button = page.locator('button[type="button"]:has-text("Sign in")').last
+    await sign_in_button.scroll_into_view_if_needed()
+    await sign_in_button.wait_for(state="visible", timeout=10000)
+    await page.wait_for_timeout(500)
+    
+    # Click the Sign in button
+    await sign_in_button.click()
+
+    # Wait for navigation to complete (wait for URL to change from /login)
+    try:
+        await page.wait_for_url(
+            lambda url: "/login" not in url,
+            timeout=30000
+        )
+    except PlaywrightTimeoutError:
+        print("Login page URL didn't change - might be stuck on login or verification")
+
+    # Additional wait for page to fully load
+    await page.wait_for_timeout(3000)
 
     current_url = page.url
+    print(f"Current URL after login: {current_url}")
 
-    # if login success
-    if "feed" in current_url or "checkpoint" not in current_url:
+    # Check if on checkpoint (verification) page
+    if "checkpoint" in current_url:
+        print("⚠️ LinkedIn requires verification! Waiting for you to complete verification...")
+        print("Waiting up to 5 minutes for verification to complete...")
+        
+        # Wait for verification to be completed (URL should change away from checkpoint)
+        try:
+            await page.wait_for_url(
+                lambda url: "checkpoint" not in url,
+                timeout=300000  # 5 minutes
+            )
+            current_url = page.url
+            print(f"✓ Verification completed! New URL: {current_url}")
+            await page.wait_for_timeout(3000)
+        except PlaywrightTimeoutError:
+            print("❌ Verification timeout - verification was not completed in time")
+            return False
 
-        print("Login successful")
+    # if login success - should NOT be on login page and NOT on checkpoint
+    if "/login" not in current_url and "checkpoint" not in current_url:
+
+        print("✓ Login successful!")
 
         await context.storage_state(path=SESSION_FILE)
 
-        print("Session saved")
+        print("✓ Session saved")
         return True
 
     else:
-        print("Login failed / verification required")
+        print(f"❌ Login failed / verification required. Current URL: {current_url}")
         return False
 
 
@@ -409,7 +462,7 @@ async def run_scraper(
         finally:
             print("Closing browser...")
             try:
-                await asyncio.wait_for(browser.close())
+                await asyncio.wait_for(browser.close(),timeout=5)
                 print("Browser closed")
             except asyncio.TimeoutError:
                 pass
