@@ -93,6 +93,7 @@ class UserProfileOut(BaseModel):
 	name: str
 	headline: str | None = None
 	location: str | None = None
+	profile_picture: str | None = None
 
 	model_config = ConfigDict(from_attributes=True)
 

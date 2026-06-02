@@ -208,23 +208,32 @@ async def scrape_profile(context, profile_url):
         # -------------------------
 
         profile_picture = ""
+
         try:
-            # Look for LinkedIn profile image URLs (use srcset if available for best resolution)
-            img_locator = page.locator('img[src*="profile-displayphoto"]')
-            if await img_locator.count() > 0:
-                img = img_locator.first
-                srcset = await img.get_attribute('srcset')
-                src = await img.get_attribute('src')
-                if srcset:
-                    parts = [p.strip() for p in srcset.split(',') if p.strip()]
-                    # pick the largest (last) entry
-                    last = parts[-1]
-                    url = last.split(' ')[0]
-                    profile_picture = url.replace('&amp;', '&')
-                elif src:
-                    profile_picture = src.replace('&amp;', '&')
-        except Exception:
-            pass
+            imgs = page.locator("section img")
+
+            for i in range(await imgs.count()):
+                img = imgs.nth(i)
+                src = await img.get_attribute("src")
+
+                if not src:
+                    continue
+
+                src = src.replace("&amp;", "&")
+
+                # ❌ reject background image
+                if "profile-displaybackgroundimage" in src:
+                    continue
+
+                # ✅ accept profile images only
+                if "profile-framedphoto" in src or "profile-displayphoto" in src:
+                    profile_picture = src
+                    break
+
+            print("Profile Picture:", profile_picture)
+
+        except Exception as e:
+            print("Image error:", e)
 
         # -------------------------
         # HEADLINE
