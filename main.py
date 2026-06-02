@@ -83,6 +83,20 @@ class JobResponse(JobBase):
 	model_config = ConfigDict(from_attributes=True)
 
 
+class StatsResponse(BaseModel):
+	total_scraped_profiles: int
+	total_shortlisted_profiles: int
+
+
+class UserProfileOut(BaseModel):
+	profile_url: str
+	name: str
+	headline: str | None = None
+	location: str | None = None
+
+	model_config = ConfigDict(from_attributes=True)
+
+
 def create_all_tables() -> None:
 	Base.metadata.create_all(bind=engine)
 
@@ -268,6 +282,7 @@ def replace_job_profiles(db: Session, job_id: int, profiles: list[dict[str, Any]
 				location=profile.get("location"),
 				about=profile.get("about"),
 				experience=json.dumps(profile.get("experience", []), ensure_ascii=False),
+				profile_picture=str(profile.get("profile_picture", "")),
 				raw_profile=json.dumps(profile, ensure_ascii=False),
 			)
 		)
@@ -290,6 +305,7 @@ def replace_shortlisted_profiles(db: Session, job_id: int, shortlisted_profiles:
 				matched_skills=", ".join(item.get("matched_skills", [])),
 				match_score=int(item.get("match_score", 0)),
 				shortlist_reason=item.get("shortlist_reason"),
+				profile_picture=str(profile.get("profile_picture", "")),
 				raw_profile=json.dumps(profile, ensure_ascii=False),
 			)
 		)
@@ -415,7 +431,6 @@ async def create_tables():
 	return {"message": "Database tables created successfully."}
 
 
-
 @app.post("/jobs", response_model=JobResponse, status_code=status.HTTP_201_CREATED)
 def create_job(job: JobCreate, db: Session = Depends(get_db)):
 	db_job = Jobs(**job.model_dump())
@@ -456,3 +471,42 @@ def delete_job(job_id: int, db: Session = Depends(get_db)):
 
 	return Response(status_code=status.HTTP_204_NO_CONTENT)
 
+
+@app.get("/stats", response_model=StatsResponse)
+def get_stats(db: Session = Depends(get_db)):
+	total_scraped = db.query(UserProfile).count()
+	total_shortlisted = db.query(ShortListedUserProfile).count()
+	return {
+		"total_scraped_profiles": total_scraped,
+		"total_shortlisted_profiles": total_shortlisted,
+	}
+
+
+@app.get("/users-profiles", response_model=list[UserProfileOut])
+def list_user_profiles(
+	skip: int = Query(default=0, ge=0),
+	limit: int = Query(default=100, ge=1, le=1000),
+	db: Session = Depends(get_db),
+):
+	"""Return users_profile rows with selected fields.
+
+	- `profile_url`, `name`, `headline`, `location`
+	"""
+	rows = (
+		db.query(UserProfile)
+		.order_by(UserProfile.id.desc())
+		.offset(skip)
+		.limit(limit)
+		.all()
+	)
+	return rows
+
+
+@app.get("/jobs/{job_id}/staus")
+def get_job_status(job_id: int, db: Session = Depends(get_db)):
+	job = get_job_or_404(db, job_id)
+	if job.status.strip().lower() == "active":
+		return True
+	else:
+		return False
+	

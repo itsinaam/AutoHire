@@ -43,6 +43,7 @@ class UserProfile(Base):
     about = Column(Text)
     experience = Column(Text, nullable=False, default="[]")
     raw_profile = Column(Text, nullable=False)
+    profile_picture = Column(String(500))
     created_at = Column(DateTime(timezone=True), server_default=func.now(), nullable=False)
 
 
@@ -61,4 +62,5 @@ class ShortListedUserProfile(Base):
     match_score = Column(Integer, nullable=False, default=0)
     shortlist_reason = Column(Text)
     raw_profile = Column(Text, nullable=False)
+    profile_picture = Column(String(500))
     created_at = Column(DateTime(timezone=True), server_default=func.now(), nullable=False)

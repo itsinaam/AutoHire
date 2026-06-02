@@ -197,11 +197,33 @@ async def scrape_profile(context, profile_url):
         name = ""
 
         try:
-            # Find h2 inside the profile link (a[href*="/in/"])
             name = await page.locator('a[href*="/in/"] h2').first.inner_text()
             name = name.strip()
             print("Name:", name)
         except:
+            pass
+
+        # -------------------------
+        # PROFILE PICTURE
+        # -------------------------
+
+        profile_picture = ""
+        try:
+            # Look for LinkedIn profile image URLs (use srcset if available for best resolution)
+            img_locator = page.locator('img[src*="profile-displayphoto"]')
+            if await img_locator.count() > 0:
+                img = img_locator.first
+                srcset = await img.get_attribute('srcset')
+                src = await img.get_attribute('src')
+                if srcset:
+                    parts = [p.strip() for p in srcset.split(',') if p.strip()]
+                    # pick the largest (last) entry
+                    last = parts[-1]
+                    url = last.split(' ')[0]
+                    profile_picture = url.replace('&amp;', '&')
+                elif src:
+                    profile_picture = src.replace('&amp;', '&')
+        except Exception:
             pass
 
         # -------------------------
@@ -211,17 +233,12 @@ async def scrape_profile(context, profile_url):
         headline = ""
 
         try:
-            # Skip the connection level indicator ("· 3rd") and get the actual headline
-            # Get all p tags and take the first meaningful one (usually 2nd p after profile info)
-            paragraphs = page.locator('p')
-            p_count = await paragraphs.count()
-            
-            if p_count > 1:
-                # Get second p (index 1) which is usually the job title/headline
-                headline = await paragraphs.nth(1).inner_text()
-                headline = headline.strip()
-        except:
-            pass
+            card = page.locator("section").nth(1) 
+            headline = await card.locator("p").first.inner_text()
+            print("Headline:", headline)
+
+        except Exception as e:
+            print("Headline error:", e)
 
         # -------------------------
         # LOCATION
@@ -318,7 +335,8 @@ async def scrape_profile(context, profile_url):
             "headline": headline,
             "location": location,
             "about": about,
-            "experience": experiences
+            "experience": experiences,
+            "profile_picture": profile_picture
         }
 
         await page.close()
