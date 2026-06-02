@@ -83,9 +83,21 @@ class JobResponse(JobBase):
 	model_config = ConfigDict(from_attributes=True)
 
 
+class ShortListedUserProfileOut(BaseModel):
+	profile_url: str
+	name: str
+	headline: str | None = None
+	location: str | None = None
+	profile_picture: str | None = None
+	match_score :int | None = None
+
+	model_config = ConfigDict(from_attributes=True)
+
+
 class StatsResponse(BaseModel):
 	total_scraped_profiles: int
 	total_shortlisted_profiles: int
+	profiles: list[ShortListedUserProfileOut]
 
 
 class UserProfileOut(BaseModel):
@@ -96,6 +108,8 @@ class UserProfileOut(BaseModel):
 	profile_picture: str | None = None
 
 	model_config = ConfigDict(from_attributes=True)
+
+
 
 
 def create_all_tables() -> None:
@@ -473,13 +487,20 @@ def delete_job(job_id: int, db: Session = Depends(get_db)):
 	return Response(status_code=status.HTTP_204_NO_CONTENT)
 
 
-@app.get("/stats", response_model=StatsResponse)
-def get_stats(db: Session = Depends(get_db)):
-	total_scraped = db.query(UserProfile).count()
-	total_shortlisted = db.query(ShortListedUserProfile).count()
+@app.get("/stats/{job_id}", response_model=StatsResponse)
+def get_stats(job_id: int, db: Session = Depends(get_db)):
+	total_scraped = db.query(UserProfile).filter(UserProfile.job_id == job_id).count()
+	total_shortlisted = db.query(ShortListedUserProfile).filter(ShortListedUserProfile.job_id == job_id).count()
+	shortlisted = (
+		db.query(ShortListedUserProfile)
+		.filter(ShortListedUserProfile.job_id == job_id)
+		.order_by(ShortListedUserProfile.id.desc())
+		.all()
+	)
 	return {
 		"total_scraped_profiles": total_scraped,
 		"total_shortlisted_profiles": total_shortlisted,
+		"profiles": shortlisted,
 	}
 
 
@@ -501,6 +522,26 @@ def list_user_profiles(
 		.all()
 	)
 	return rows
+
+@app.get("/users-shortlisted-profiles", response_model=list[ShortListedUserProfileOut])
+def list_shortlisted_user_profiles(
+	skip: int = Query(default=0, ge=0),
+	limit: int = Query(default=100, ge=1, le=1000),
+	db: Session = Depends(get_db),
+):
+	"""Return users_profile rows with selected fields.
+
+	- `profile_url`, `name`, `headline`, `location`
+	"""
+	rows = (
+		db.query(ShortListedUserProfile)
+		.order_by(ShortListedUserProfile.id.desc())
+		.offset(skip)
+		.limit(limit)
+		.all()
+	)
+	return rows
+
 
 
 @app.get("/jobs/{job_id}/staus")
