@@ -478,6 +478,9 @@ def update_job(job_id: int, payload: JobUpdate, db: Session = Depends(get_db)):
 def delete_job(job_id: int, db: Session = Depends(get_db)):
 	job = get_job_or_404(db, job_id)
 	try:
+		# remove dependent rows to avoid foreign key constraint errors
+		db.query(UserProfile).filter(UserProfile.job_id == job_id).delete(synchronize_session=False)
+		db.query(ShortListedUserProfile).filter(ShortListedUserProfile.job_id == job_id).delete(synchronize_session=False)
 		db.delete(job)
 		db.commit()
 	except SQLAlchemyError as exc:
