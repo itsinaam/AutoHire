@@ -24,6 +24,8 @@ class Jobs(Base):
     # single linkedin location id
     location = Column(String(50), nullable=False)
 
+    industry = Column(String(255), nullable=False)
+
     min_experience = Column(String(255), nullable=False)
 
     connection_degree = Column(String(255), nullable=False)

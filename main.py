@@ -26,14 +26,14 @@ app.add_middleware(
 
 class ScrapeRequest(BaseModel):
 	search_keyword: str = Field(min_length=1)
-	location_id: str = Field(min_length=1)
+	location_text: str = Field(min_length=1)
 	limit: int = Field(ge=1, le=50)
 	headless: bool = False
 
 
 class ScrapeResponse(BaseModel):
 	search_keyword: str
-	location_id: str
+	location_text: str
 	limit: int
 	saved_to: str
 	total_profiles: int
@@ -56,6 +56,7 @@ class JobBase(BaseModel):
 	primary_skills: str = Field(min_length=1, max_length=500)
 	target_keywords: str = Field(min_length=1, max_length=500)
 	location: str = Field(min_length=1, max_length=50)
+	industry: str = Field(min_length=1, max_length=50)
 	min_experience: str = Field(min_length=1, max_length=255)
 	connection_degree: str = Field(min_length=1, max_length=255)
 	status: str = Field(default="inactive", min_length=1, max_length=50)
@@ -72,6 +73,7 @@ class JobUpdate(BaseModel):
 	primary_skills: str | None = Field(default=None, min_length=1, max_length=500)
 	target_keywords: str | None = Field(default=None, min_length=1, max_length=500)
 	location: str | None = Field(default=None, min_length=1, max_length=50)
+	industry: str | None = Field(default=None, min_length=1, max_length=255)
 	min_experience: str | None = Field(default=None, min_length=1, max_length=255)
 	connection_degree: str | None = Field(default=None, min_length=1, max_length=255)
 	status: str | None = Field(default=None, min_length=1, max_length=50)
@@ -327,7 +329,7 @@ def replace_shortlisted_profiles(db: Session, job_id: int, shortlisted_profiles:
 	db.commit()
 
 
-def run_job_scrape_in_background(job_id: int, search_keyword: str, location_id: str) -> None:
+def run_job_scrape_in_background(job_id: int, search_keyword: str, location_text: str, industry: str) -> None:
 	from scraper import run_scraper_sync
 
 	db = SessionLocal()
@@ -336,9 +338,10 @@ def run_job_scrape_in_background(job_id: int, search_keyword: str, location_id: 
 		print(f"[jobs/scrape] Background scrape started for job_id={job_id}")
 		result = run_scraper_sync(
 			search_keyword=search_keyword,
-			location_id=location_id,
+			location_text=location_text,
 			limit=10,
 			headless=False,
+			industry=industry
 		)
 
 		job = db.query(Jobs).filter(Jobs.id == job_id).first()
@@ -395,9 +398,10 @@ async def scrape_linkedin_profiles(request: ScrapeRequest):
 		return await asyncio.to_thread(
 			run_scraper_sync,
 			search_keyword=request.search_keyword,
-			location_id=request.location_id,
+			location_text=request.location_text,
 			limit=request.limit,
 			headless=request.headless,
+			industry=request.industry,
 		)
 	except RuntimeError as exc:
 		raise HTTPException(status_code=401, detail=str(exc)) from exc
@@ -430,7 +434,8 @@ async def scrape_job_profiles(
         run_job_scrape_in_background,
         job_id=job.id,
         search_keyword=job.name,
-        location_id=job.location,
+        location_text=job.location,
+		industry=job.industry
     )
 
     return {
